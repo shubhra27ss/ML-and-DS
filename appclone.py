@@ -84,12 +84,19 @@ def create_video(text, output_file, background_images=None):
     os.remove(audio_file)
     st.success(f"Video saved as {output_file}")
 
-st.title("Text to Video Generator with Background Images")
+def create_audio(text, output_file):
+    tts = gTTS(text=text, lang='en')
+    tts.save(output_file)
+    st.success(f"Audio saved as {output_file}")
+    st.audio(output_file)
+
+st.title("Text to Video/Audio Generator with Background Images")
 text_input = st.text_area("Enter text manually or upload a file")
 text_file = st.file_uploader("Or upload a text file", type=["txt"])
 background_images = st.file_uploader("Upload background images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+option = st.radio("Select output type", ("Video", "Audio"))
 
-if st.button("Generate Video"):
+if st.button("Generate Output"):
     text_content = ""
     if text_file:
         text_content = text_file.read().decode("utf-8")
@@ -97,14 +104,16 @@ if st.button("Generate Video"):
         text_content = text_input
     
     if text_content:
-        bg_image_paths = []
-        for bg_img in background_images:
-            bg_path = f"temp_{bg_img.name}"
-            with open(bg_path, "wb") as f:
-                f.write(bg_img.read())
-            bg_image_paths.append(bg_path)
-
-        create_video(text_content, "output_video.mp4", bg_image_paths)
-        st.video("output_video.mp4")
+        if option == "Video":
+            bg_image_paths = []
+            for bg_img in background_images:
+                bg_path = f"temp_{bg_img.name}"
+                with open(bg_path, "wb") as f:
+                    f.write(bg_img.read())
+                bg_image_paths.append(bg_path)
+            create_video(text_content, "output_video.mp4", bg_image_paths)
+            st.video("output_video.mp4")
+        else:
+            create_audio(text_content, "output_audio.mp3")
     else:
         st.error("Please provide text input or upload a file.")

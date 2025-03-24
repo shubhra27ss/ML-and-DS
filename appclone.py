@@ -1,24 +1,15 @@
 import os
 import random
-import numpy as np
 import streamlit as st
+import numpy as np
 from gtts import gTTS
 from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
-import requests
-from io import BytesIO
 
 def create_text_image(text, background_image=None, width=1280, height=720):
-    """
-    Create an image with wrapped text on a background image.
-    """
-    if background_image:
-        response = requests.get(background_image)
-        if response.status_code == 200:
-            image = Image.open(BytesIO(response.content)).resize((width, height))
-        else:
-            image = Image.new('RGB', (width, height), color='white')
+    if background_image and os.path.exists(background_image):
+        image = Image.open(background_image).resize((width, height))
     else:
         image = Image.new('RGB', (width, height), color='white')
 
@@ -60,10 +51,10 @@ def create_text_image(text, background_image=None, width=1280, height=720):
 
     return image
 
-def create_video(text, output_file, background_images=None):
-    """
-    Create a video from text with dynamic text images and background images.
-    """
+def create_video(text_file, output_file, background_images=None):
+    with open(text_file, 'r', encoding='utf-8') as file:
+        text = file.read()
+
     tts = gTTS(text=text, lang='en')
     audio_file = "temp_audio.mp3"
     tts.save(audio_file)
@@ -92,18 +83,22 @@ def create_video(text, output_file, background_images=None):
     video_clip = concatenate_videoclips(image_clips)
     video_clip = video_clip.set_audio(audio_clip)
     video_clip.write_videofile(output_file, codec='libx264', fps=24)
-
     os.remove(audio_file)
-    return output_file
+    st.success(f"Video saved as {output_file}")
 
-# Streamlit UI
-st.title("Text-to-Video Generator with Background Images")
+st.title("Text to Video Generator with Background Images")
+text_file = st.file_uploader("Upload a text file", type=["txt"])
+background_images = st.file_uploader("Upload background images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+if st.button("Generate Video") and text_file:
+    with open("uploaded_text.txt", "wb") as f:
+        f.write(text_file.read())
 
-text_input = st.text_area("Enter your text")
-background_urls = st.text_area("Enter background image URLs (comma-separated)")
+    bg_image_paths = []
+    for bg_img in background_images:
+        bg_path = f"temp_{bg_img.name}"
+        with open(bg_path, "wb") as f:
+            f.write(bg_img.read())
+        bg_image_paths.append(bg_path)
 
-if st.button("Generate Video") and text_input:
-    bg_image_paths = [url.strip() for url in background_urls.split(',') if url.strip()]
-    output_video = "generated_video.mp4"
-    create_video(text_input, output_video, bg_image_paths)
-    st.video(output_video)
+    create_video("uploaded_text.txt", "output_video.mp4", bg_image_paths)
+    st.video("output_video.mp4")

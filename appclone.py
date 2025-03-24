@@ -2,7 +2,6 @@ import streamlit as st
 from gtts import gTTS
 from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from PIL.Image import Resampling  # Add this import
 import tempfile
 import os
 import textwrap
@@ -14,7 +13,7 @@ from io import BytesIO
 
 # Set page config
 st.set_page_config(
-    page_title="Text-to-Video Generator",
+    page_title="Instant Text-to-Video Generator",
     page_icon="🎬",
     layout="centered"
 )
@@ -78,7 +77,7 @@ def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_
     """Create a text clip with background"""
     # Create background
     if bg_image:
-        img = bg_image.resize((width, height), Resampling.LANCZOS)  # Updated resampling method
+        img = bg_image
     else:
         img = create_gradient_background(width, height)
     
@@ -87,7 +86,6 @@ def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_
     draw = ImageDraw.Draw(overlay)
     
     try:
-        # Try to load a nice font (fallback to default if not available)
         font = ImageFont.truetype("arial.ttf", 48)
     except:
         font = ImageFont.load_default()
@@ -155,7 +153,7 @@ def generate_video(text, background_style, add_effects=True):
         # Calculate duration for this segment
         clip_duration = min(len(sentence.split()) * 0.5, 10)  # Max 10s per clip
         if i == len(sentences)-1:
-            clip_duration = duration - sum(clip.duration for clip in clips[:-1])
+            clip_duration = duration - sum(clip.duration for clip in clips)
         
         # Create clip
         clip = create_text_clip(
@@ -177,11 +175,11 @@ def generate_video(text, background_style, add_effects=True):
     return video_clip, audio_path
 
 def main():
-    st.title("🎥 Text-to-Video Generator")
-    st.markdown("Create videos from text with beautiful backgrounds")
+    st.title("⚡ Instant Text-to-Video Generator")
+    st.markdown("Create videos instantly - no API keys needed!")
     
     # Text input
-    text = st.text_area("Enter your text:", placeholder="Type or paste your text here...", height=250)
+    text = st.text_area("Enter your text:", placeholder="Paste your content here...", height=250)
     
     # Video options
     background_style = st.selectbox(
@@ -196,7 +194,7 @@ def main():
         if not text.strip():
             st.warning("Please enter some text first.")
         else:
-            with st.spinner("Creating your video..."):
+            with st.spinner("🎥 Creating your video..."):
                 try:
                     # Generate and display video
                     video_clip, audio_path = generate_video(text, background_style, add_effects)
@@ -218,7 +216,7 @@ def main():
                             st.download_button(
                                 "Download Video",
                                 f,
-                                file_name="output.mp4",
+                                file_name="instant_video.mp4",
                                 mime="video/mp4"
                             )
                     
@@ -227,6 +225,7 @@ def main():
                     os.unlink(audio_path)
                     
                     st.success("Video created successfully! 🎉")
+                    st.balloons()
                 
                 except Exception as e:
                     st.error(f"Error generating video: {str(e)}")

@@ -2,7 +2,7 @@ import streamlit as st
 from gtts import gTTS
 from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from PIL.Image import Resampling
+from PIL.Image import Resampling  # Modern resampling import
 import tempfile
 import os
 import textwrap
@@ -15,7 +15,7 @@ import re
 
 # Set page config
 st.set_page_config(
-    page_title="Text-to-Video Generator",
+    page_title="Text-to-Video Generator PRO",
     page_icon="🎬",
     layout="centered"
 )
@@ -80,9 +80,9 @@ def generate_audio(text):
 
 def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_effects=True):
     """Create a text clip with background"""
-    # Create background
+    # Create background with modern resizing
     if bg_image:
-        img = bg_image.resize((width, height), Resampling.LANCZOS)
+        img = bg_image.resize((width, height), Resampling.LANCZOS)  # Fixed resizing method
     else:
         img = create_gradient_background(width, height)
     
@@ -126,14 +126,11 @@ def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_
     img_array = np.array(final_img)
     clip = ImageClip(img_array).set_duration(duration)
     
-    # Add effects only if enabled
+    # Add effects if enabled
     if add_effects:
-        try:
-            clip = clip.fx(vfx.resize, lambda t: 1 + 0.01 * t)
-            clip = clip.fadein(0.5)
-            clip = clip.set_position(lambda t: ('center', 360 + 5*np.sin(t*2)))
-        except Exception as e:
-            st.warning(f"Animation error: {str(e)}. Proceeding without animations.")
+        clip = clip.fx(vfx.resize, lambda t: 1 + 0.01 * t)  # Zoom effect
+        clip = clip.fadein(0.5)  # Fade in
+        clip = clip.set_position(lambda t: ('center', 360 + 5*np.sin(t*2)))  # Subtle movement
     
     return clip
 
@@ -187,7 +184,7 @@ def generate_video(text, background_style, add_effects=True):
     return video_clip, audio_path
 
 def main():
-    st.title("🎥 Text-to-Video Generator")
+    st.title("🎬 Text-to-Video Generator PRO")
     st.markdown("Create professional videos with automatic backgrounds")
     
     # Input options
@@ -216,7 +213,7 @@ def main():
         add_effects = st.checkbox("Enable animations", value=True)
     
     if st.button("Generate Video", type="primary"):
-        with st.spinner("Creating your video..."):
+        with st.spinner("🎥 Creating your video..."):
             try:
                 # Generate and display video
                 video_clip, audio_path = generate_video(text, background_style, add_effects)
@@ -247,6 +244,7 @@ def main():
                 os.unlink(audio_path)
                 
                 st.success("Video created successfully! 🎉")
+                st.balloons()
             
             except Exception as e:
                 st.error(f"Error generating video: {str(e)}")

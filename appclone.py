@@ -67,16 +67,24 @@ def create_video(text, output_file, background_images=None):
 
     image_clips = []
     num_images = len(background_images)
-    for i in range(0, len(words), segment_size):
+    
+    # Calculate total segments needed
+    total_segments = len(range(0, len(words), segment_size))
+    
+    for i, word_start in enumerate(range(0, len(words), segment_size)):
         bg_image = background_images[i % num_images]
-        segment = ' '.join(words[i:i+segment_size])
+        segment = ' '.join(words[word_start:word_start+segment_size])
         img = create_text_image(segment, background_image=bg_image)
-        img_clip = ImageClip(np.array(img)).set_duration(5).fadein(1).fadeout(1)
+        
+        # For all clips except last, use fixed duration
+        if i < total_segments - 1:
+            img_clip = ImageClip(np.array(img)).set_duration(5).fadein(1).fadeout(1)
+        else:
+            # For last clip, calculate exact remaining duration
+            remaining_duration = audio_duration - (5 * (total_segments - 1))
+            img_clip = ImageClip(np.array(img)).set_duration(remaining_duration)
+            
         image_clips.append(img_clip)
-
-    if image_clips:
-        last_clip_duration = audio_duration - sum(clip.duration for clip in image_clips[:-1])
-        image_clips[-1] = image_clips[-1].set_duration(last_clip_duration)
 
     video_clip = concatenate_videoclips(image_clips, method="compose")
     video_clip = video_clip.set_audio(audio_clip)

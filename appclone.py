@@ -10,24 +10,10 @@ import random
 from moviepy.video.fx import all as vfx
 import requests
 from io import BytesIO
-# Replace this line:
-# from unsplash_search import UnsplashSearch
 
-# With this function:
-def search_unsplash(query, api_key, per_page=1):
-    """Search Unsplash directly using their API"""
-    try:
-        url = f"https://api.unsplash.com/search/photos?query={query}&per_page={per_page}"
-        headers = {"Authorization": f"Client-ID {api_key}"}
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"Unsplash API error: {str(e)}")
-        return None
 # Set page config
 st.set_page_config(
-    page_title="Smart Text-to-Video Generator",
+    page_title="Instant Text-to-Video Generator",
     page_icon="🎬",
     layout="centered"
 )
@@ -57,22 +43,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize Unsplash (you'll need an API key)
-unsplash = UnsplashSearch(api_key="your_unsplash_api_key")
-
-def get_web_image(query, width=1280, height=720):
-    """Fetch relevant image from Unsplash based on query"""
+def get_random_image(query, width=1280, height=720):
+    """Get random image from Unsplash without API key"""
     try:
-        result = unsplash.search(query, per_page=1)
-        if result['results']:
-            img_url = result['results'][0]['urls']['regular']
-            response = requests.get(img_url)
-            img = Image.open(BytesIO(response.content))
-            img = img.resize((width, height))
-            return img
+        url = f"https://source.unsplash.com/random/{width}x{height}/?{query}"
+        response = requests.get(url, timeout=10)
+        img = Image.open(BytesIO(response.content))
+        return img
     except:
-        pass
-    return None
+        return None
+
+def create_gradient_background(width=1280, height=720):
+    """Create colorful gradient background"""
+    bg = Image.new('RGB', (width, height))
+    draw = ImageDraw.Draw(bg)
+    for y in range(height):
+        color = (
+            int(y/height*255),
+            random.randint(0, 255),
+            255-int(y/height*255)
+        )
+        draw.line([(0, y), (width, y)], fill=color)
+    return bg
 
 def generate_audio(text):
     """Generate audio from text"""
@@ -82,17 +74,12 @@ def generate_audio(text):
         return fp.name
 
 def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_effects=True):
-    """Create a text clip with web-fetched background"""
+    """Create a text clip with background"""
     # Create background
     if bg_image:
         img = bg_image
     else:
-        # Generate gradient background as fallback
-        img = Image.new('RGB', (width, height))
-        draw = ImageDraw.Draw(img)
-        for y in range(height):
-            color = (0, int(y/height*255), 255-int(y/height*255))
-            draw.line([(0, y), (width, y)], fill=color)
+        img = create_gradient_background(width, height)
     
     # Create text overlay
     overlay = Image.new('RGBA', (width, height), (0, 0, 0, 0))
@@ -155,10 +142,13 @@ def generate_video(text, background_style, add_effects=True):
     
     clips = []
     for i, sentence in enumerate(sentences):
-        # Get relevant image for this sentence
+        # Get relevant image
         bg_image = None
         if background_style != "Gradient":
-            bg_image = get_web_image(sentence if background_style == "Contextual" else background_style)
+            if background_style == "Contextual":
+                bg_image = get_random_image(sentence.split()[0])  # Use first word as query
+            else:
+                bg_image = get_random_image(background_style.lower())
         
         # Calculate duration for this segment
         clip_duration = min(len(sentence.split()) * 0.5, 10)  # Max 10s per clip
@@ -185,8 +175,8 @@ def generate_video(text, background_style, add_effects=True):
     return video_clip, audio_path
 
 def main():
-    st.title("🌍 Smart Text-to-Video Generator")
-    st.markdown("Automatically creates videos with contextually relevant web images")
+    st.title("⚡ Instant Text-to-Video Generator")
+    st.markdown("Create videos instantly - no API keys needed!")
     
     # Text input
     text = st.text_area("Enter your text:", placeholder="Paste your content here...", height=250)
@@ -195,7 +185,7 @@ def main():
     background_style = st.selectbox(
         "Background style:",
         ["Contextual", "Nature", "City", "Technology", "Abstract", "Gradient"],
-        help="'Contextual' will find images matching your text content"
+        help="'Contextual' tries to match your text content"
     )
     
     add_effects = st.checkbox("Enable animations", value=True)
@@ -204,7 +194,7 @@ def main():
         if not text.strip():
             st.warning("Please enter some text first.")
         else:
-            with st.spinner("🧠 Analyzing text and finding perfect images..."):
+            with st.spinner("🎥 Creating your video..."):
                 try:
                     # Generate and display video
                     video_clip, audio_path = generate_video(text, background_style, add_effects)
@@ -226,7 +216,7 @@ def main():
                             st.download_button(
                                 "Download Video",
                                 f,
-                                file_name="smart_video.mp4",
+                                file_name="instant_video.mp4",
                                 mime="video/mp4"
                             )
                     
@@ -234,7 +224,7 @@ def main():
                     os.unlink(video_fp.name)
                     os.unlink(audio_path)
                     
-                    st.success("Video generated successfully! 🎉")
+                    st.success("Video created successfully! 🎉")
                     st.balloons()
                 
                 except Exception as e:

@@ -6,6 +6,7 @@ from gtts import gTTS
 from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
+from moviepy.video.fx import all as vfx
 
 def create_text_image(text, background_image=None, width=1280, height=720):
     if background_image and os.path.exists(background_image):
@@ -62,28 +63,25 @@ def create_video(text, output_file, background_images=None):
     if not background_images:
         background_images = [None]
 
-    words = text.split()
-    segment_size = max(1, len(words) // max(int(audio_duration // 5), 1))
+    # Calculate how many seconds each background should be shown
+    num_images = len(background_images)
+    duration_per_image = audio_duration / num_images
 
     image_clips = []
-    num_images = len(background_images)
-    
-    # Calculate total segments needed
-    total_segments = len(range(0, len(words), segment_size))
-    
-    for i, word_start in enumerate(range(0, len(words), segment_size)):
-        bg_image = background_images[i % num_images]
-        segment = ' '.join(words[word_start:word_start+segment_size])
-        img = create_text_image(segment, background_image=bg_image)
+    for i, bg_image in enumerate(background_images):
+        # Split text proportionally for each background
+        words = text.split()
+        start_idx = int(i * len(words) / num_images)
+        end_idx = int((i + 1) * len(words) / num_images)
+        segment = ' '.join(words[start_idx:end_idx])
         
-        # For all clips except last, use fixed duration
-        if i < total_segments - 1:
-            img_clip = ImageClip(np.array(img)).set_duration(5).fadein(1).fadeout(1)
-        else:
-            # For last clip, calculate exact remaining duration
-            remaining_duration = audio_duration - (5 * (total_segments - 1))
-            img_clip = ImageClip(np.array(img)).set_duration(remaining_duration)
-            
+        img = create_text_image(segment, background_image=bg_image)
+        img_clip = ImageClip(np.array(img)).set_duration(duration_per_image)
+        
+        # Add animations
+        img_clip = img_clip.fx(vfx.fadein, 0.5).fx(vfx.fadeout, 0.5)
+        img_clip = img_clip.fx(vfx.resize, lambda t: 1 + 0.02 * np.sin(t*2))  # Gentle zoom effect
+        
         image_clips.append(img_clip)
 
     video_clip = concatenate_videoclips(image_clips, method="compose")
@@ -91,6 +89,8 @@ def create_video(text, output_file, background_images=None):
     video_clip.write_videofile(output_file, codec='libx264', fps=24)
     os.remove(audio_file)
     st.success(f"Video saved as {output_file}")
+
+# Rest of your Streamlit UI code remains the same...
 
 def create_audio(text, output_file):
     tts = gTTS(text=text, lang='en')

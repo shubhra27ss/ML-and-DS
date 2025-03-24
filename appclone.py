@@ -2,7 +2,7 @@ import streamlit as st
 from gtts import gTTS
 from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from PIL.Image import Resampling  # Modern import for resampling
+from PIL.Image import Resampling  # Correct modern import
 import tempfile
 import os
 import textwrap
@@ -15,7 +15,7 @@ import re
 
 # Set page config
 st.set_page_config(
-    page_title="Text-to-Video Generator",
+    page_title="Text-to-Video Generator PRO",
     page_icon="🎬",
     layout="centered"
 )
@@ -45,8 +45,8 @@ st.markdown("""
 def get_keywords(text):
     """Extract keywords from text for image search"""
     words = re.findall(r'\b\w{4,}\b', text.lower())
-    filtered = [w for w in words if w not in ['this', 'that', 'with', 'your', 'have']]
-    return list(set(filtered))[:3]
+    common_words = {'this','that','with','your','have','when','they','from'}
+    return [w for w in words if w not in common_words][:3]
 
 def get_random_image(query, width=1280, height=720):
     """Get random image from Unsplash without API key"""
@@ -80,9 +80,9 @@ def generate_audio(text):
 
 def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_effects=True):
     """Create a text clip with background"""
-    # Create background
+    # Create background (with modern resampling)
     if bg_image:
-        img = bg_image.resize((width, height), Resampling.LANCZOS)  # Fixed resampling method
+        img = bg_image.resize((width, height), Resampling.LANCZOS)  # Fixed line
     else:
         img = create_gradient_background(width, height)
     
@@ -184,8 +184,8 @@ def generate_video(text, background_style, add_effects=True):
     return video_clip, audio_path
 
 def main():
-    st.title("🎥 Text-to-Video Generator")
-    st.markdown("Create videos with automatic background images")
+    st.title("🎬 Text-to-Video Generator PRO")
+    st.markdown("Create professional videos with automatic backgrounds")
     
     # Input options
     input_method = st.radio("Input method:", ("Type text", "Upload text file"))
@@ -207,13 +207,14 @@ def main():
     with col1:
         background_style = st.selectbox(
             "Background style:",
-            ["Contextual", "Nature", "City", "Technology", "Abstract", "Gradient"]
+            ["Contextual", "Nature", "City", "Technology", "Abstract", "Gradient"],
+            help="'Contextual' matches images to your text"
         )
     with col2:
         add_effects = st.checkbox("Enable animations", value=True)
     
     if st.button("Generate Video", type="primary"):
-        with st.spinner("Creating your video..."):
+        with st.spinner("🎥 Creating your video..."):
             try:
                 # Generate and display video
                 video_clip, audio_path = generate_video(text, background_style, add_effects)
@@ -244,6 +245,7 @@ def main():
                 os.unlink(audio_path)
                 
                 st.success("Video created successfully! 🎉")
+                st.balloons()
             
             except Exception as e:
                 st.error(f"Error generating video: {str(e)}")

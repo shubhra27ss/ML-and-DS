@@ -2,7 +2,7 @@ import streamlit as st
 from gtts import gTTS
 from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from PIL.Image import Resampling
+from PIL.Image import Resampling  # Modern import for resampling
 import tempfile
 import os
 import textwrap
@@ -15,7 +15,7 @@ import re
 
 # Set page config
 st.set_page_config(
-    page_title="Enhanced Text-to-Video Generator",
+    page_title="Text-to-Video Generator",
     page_icon="🎬",
     layout="centered"
 )
@@ -39,9 +39,6 @@ st.markdown("""
     .stSelectbox div {
         margin-bottom: 15px;
     }
-    .css-1v0mbdj {
-        border-radius: 8px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -49,7 +46,7 @@ def get_keywords(text):
     """Extract keywords from text for image search"""
     words = re.findall(r'\b\w{4,}\b', text.lower())
     filtered = [w for w in words if w not in ['this', 'that', 'with', 'your', 'have']]
-    return list(set(filtered))[:3]  # Return top 3 unique keywords
+    return list(set(filtered))[:3]
 
 def get_random_image(query, width=1280, height=720):
     """Get random image from Unsplash without API key"""
@@ -85,7 +82,7 @@ def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_
     """Create a text clip with background"""
     # Create background
     if bg_image:
-        img = bg_image.resize((width, height), Resampling.LANCZOS)
+        img = bg_image.resize((width, height), Resampling.LANCZOS)  # Fixed resampling method
     else:
         img = create_gradient_background(width, height)
     
@@ -131,9 +128,9 @@ def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_
     
     # Add effects
     if add_effects:
-        clip = clip.fx(vfx.resize, lambda t: 1 + 0.01 * t)  # Zoom effect
-        clip = clip.fadein(0.5)  # Fade in
-        clip = clip.set_position(lambda t: ('center', 360 + 5*np.sin(t*2)))  # Subtle movement
+        clip = clip.fx(vfx.resize, lambda t: 1 + 0.01 * t)
+        clip = clip.fadein(0.5)
+        clip = clip.set_position(lambda t: ('center', 360 + 5*np.sin(t*2)))
     
     return clip
 
@@ -162,8 +159,8 @@ def generate_video(text, background_style, add_effects=True):
             else:
                 bg_image = get_random_image(background_style.lower())
         
-        # Calculate duration for this segment
-        clip_duration = min(len(sentence.split()) * 0.5, 10)  # Max 10s per clip
+        # Calculate duration
+        clip_duration = min(len(sentence.split()) * 0.5, 10)
         if i == len(sentences)-1:
             clip_duration = duration - sum(clip.duration for clip in clips[:-1])
         
@@ -187,8 +184,8 @@ def generate_video(text, background_style, add_effects=True):
     return video_clip, audio_path
 
 def main():
-    st.title("🎥 Enhanced Text-to-Video Generator")
-    st.markdown("Create professional videos with automatically selected background images")
+    st.title("🎥 Text-to-Video Generator")
+    st.markdown("Create videos with automatic background images")
     
     # Input options
     input_method = st.radio("Input method:", ("Type text", "Upload text file"))
@@ -210,14 +207,13 @@ def main():
     with col1:
         background_style = st.selectbox(
             "Background style:",
-            ["Contextual", "Nature", "City", "Technology", "Abstract", "Gradient"],
-            help="'Contextual' tries to match your text content"
+            ["Contextual", "Nature", "City", "Technology", "Abstract", "Gradient"]
         )
     with col2:
         add_effects = st.checkbox("Enable animations", value=True)
     
     if st.button("Generate Video", type="primary"):
-        with st.spinner("🎬 Creating your video..."):
+        with st.spinner("Creating your video..."):
             try:
                 # Generate and display video
                 video_clip, audio_path = generate_video(text, background_style, add_effects)
@@ -239,7 +235,7 @@ def main():
                         st.download_button(
                             "Download Video",
                             f,
-                            file_name="generated_video.mp4",
+                            file_name="output.mp4",
                             mime="video/mp4"
                         )
                 
@@ -248,7 +244,6 @@ def main():
                 os.unlink(audio_path)
                 
                 st.success("Video created successfully! 🎉")
-                st.balloons()
             
             except Exception as e:
                 st.error(f"Error generating video: {str(e)}")

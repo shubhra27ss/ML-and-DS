@@ -2,6 +2,7 @@ import streamlit as st
 from gtts import gTTS
 from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL.Image import Resampling
 import tempfile
 import os
 import textwrap
@@ -10,10 +11,11 @@ import random
 from moviepy.video.fx import all as vfx
 import requests
 from io import BytesIO
+import re
 
 # Set page config
 st.set_page_config(
-    page_title="Instant Text-to-Video Generator",
+    page_title="Enhanced Text-to-Video Generator",
     page_icon="🎬",
     layout="centered"
 )
@@ -42,6 +44,12 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+def get_keywords(text):
+    """Extract keywords from text for image search"""
+    words = re.findall(r'\b\w{4,}\b', text.lower())
+    filtered = [w for w in words if w not in ['this', 'that', 'with', 'your', 'have']]
+    return list(set(filtered))[:3]  # Return top 3 unique keywords
 
 def get_random_image(query, width=1280, height=720):
     """Get random image from Unsplash without API key"""
@@ -77,7 +85,7 @@ def create_text_clip(text, duration, width=1280, height=720, bg_image=None, add_
     """Create a text clip with background"""
     # Create background
     if bg_image:
-        img = bg_image
+        img = bg_image.resize((width, height), Resampling.LANCZOS)
     else:
         img = create_gradient_background(width, height)
     
@@ -146,14 +154,18 @@ def generate_video(text, background_style, add_effects=True):
         bg_image = None
         if background_style != "Gradient":
             if background_style == "Contextual":
-                bg_image = get_random_image(sentence.split()[0])  # Use first word as query
+                keywords = get_keywords(sentence)
+                for keyword in keywords:
+                    bg_image = get_random_image(keyword)
+                    if bg_image:
+                        break
             else:
                 bg_image = get_random_image(background_style.lower())
         
         # Calculate duration for this segment
         clip_duration = min(len(sentence.split()) * 0.5, 10)  # Max 10s per clip
         if i == len(sentences)-1:
-            clip_duration = duration - sum(clip.duration for clip in clips)
+            clip_duration = duration - sum(clip.duration for clip in clips[:-1])
         
         # Create clip
         clip = create_text_clip(
@@ -175,60 +187,71 @@ def generate_video(text, background_style, add_effects=True):
     return video_clip, audio_path
 
 def main():
-    st.title("⚡ Instant Text-to-Video Generator")
-    st.markdown("Create videos instantly - no API keys needed!")
+    st.title("🎥 Enhanced Text-to-Video Generator")
+    st.markdown("Create professional videos with automatically selected background images")
     
-    # Text input
-    text = st.text_area("Enter your text:", placeholder="Paste your content here...", height=250)
+    # Input options
+    input_method = st.radio("Input method:", ("Type text", "Upload text file"))
+    
+    text = ""
+    if input_method == "Type text":
+        text = st.text_area("Enter your text:", placeholder="Paste your content here...", height=250)
+    else:
+        uploaded_file = st.file_uploader("Upload text file", type=["txt"])
+        if uploaded_file:
+            text = uploaded_file.read().decode("utf-8")
+    
+    if not text.strip():
+        st.warning("Please enter some text first.")
+        return
     
     # Video options
-    background_style = st.selectbox(
-        "Background style:",
-        ["Contextual", "Nature", "City", "Technology", "Abstract", "Gradient"],
-        help="'Contextual' tries to match your text content"
-    )
-    
-    add_effects = st.checkbox("Enable animations", value=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        background_style = st.selectbox(
+            "Background style:",
+            ["Contextual", "Nature", "City", "Technology", "Abstract", "Gradient"],
+            help="'Contextual' tries to match your text content"
+        )
+    with col2:
+        add_effects = st.checkbox("Enable animations", value=True)
     
     if st.button("Generate Video", type="primary"):
-        if not text.strip():
-            st.warning("Please enter some text first.")
-        else:
-            with st.spinner("🎥 Creating your video..."):
-                try:
-                    # Generate and display video
-                    video_clip, audio_path = generate_video(text, background_style, add_effects)
-                    
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as video_fp:
-                        video_clip.write_videofile(
-                            video_fp.name, 
-                            codec='libx264', 
-                            fps=24,
-                            threads=4,
-                            preset='ultrafast'
-                        )
-                        
-                        # Display video
-                        st.video(video_fp.name)
-                        
-                        # Download button
-                        with open(video_fp.name, "rb") as f:
-                            st.download_button(
-                                "Download Video",
-                                f,
-                                file_name="instant_video.mp4",
-                                mime="video/mp4"
-                            )
-                    
-                    # Clean up
-                    os.unlink(video_fp.name)
-                    os.unlink(audio_path)
-                    
-                    st.success("Video created successfully! 🎉")
-                    st.balloons()
+        with st.spinner("🎬 Creating your video..."):
+            try:
+                # Generate and display video
+                video_clip, audio_path = generate_video(text, background_style, add_effects)
                 
-                except Exception as e:
-                    st.error(f"Error generating video: {str(e)}")
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as video_fp:
+                    video_clip.write_videofile(
+                        video_fp.name, 
+                        codec='libx264', 
+                        fps=24,
+                        threads=4,
+                        preset='ultrafast'
+                    )
+                    
+                    # Display video
+                    st.video(video_fp.name)
+                    
+                    # Download button
+                    with open(video_fp.name, "rb") as f:
+                        st.download_button(
+                            "Download Video",
+                            f,
+                            file_name="generated_video.mp4",
+                            mime="video/mp4"
+                        )
+                
+                # Clean up
+                os.unlink(video_fp.name)
+                os.unlink(audio_path)
+                
+                st.success("Video created successfully! 🎉")
+                st.balloons()
+            
+            except Exception as e:
+                st.error(f"Error generating video: {str(e)}")
 
 if __name__ == "__main__":
     main()

@@ -69,8 +69,9 @@ def create_video(text_file, output_file, background_images=None):
     segment_size = len(words) // max(int(audio_duration // 5), 1)
 
     image_clips = []
+    num_images = len(background_images)
     for i in range(0, len(words), segment_size):
-        bg_image = random.choice(background_images)
+        bg_image = background_images[(i // segment_size) % num_images]
         segment = ' '.join(words[i:i+segment_size])
         img = create_text_image(segment, background_image=bg_image)
         img_clip = ImageClip(np.array(img)).set_duration(5)
@@ -80,7 +81,7 @@ def create_video(text_file, output_file, background_images=None):
         last_clip_duration = audio_duration - sum(clip.duration for clip in image_clips[:-1])
         image_clips[-1] = image_clips[-1].set_duration(last_clip_duration)
 
-    video_clip = concatenate_videoclips(image_clips)
+    video_clip = concatenate_videoclips(image_clips, method="compose").fadein(1).fadeout(1)
     video_clip = video_clip.set_audio(audio_clip)
     video_clip.write_videofile(output_file, codec='libx264', fps=24)
     os.remove(audio_file)

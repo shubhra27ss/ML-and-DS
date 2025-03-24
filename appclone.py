@@ -10,8 +10,21 @@ import random
 from moviepy.video.fx import all as vfx
 import requests
 from io import BytesIO
-from unsplash_search import UnsplashSearch  # You'll need to install this
+# Replace this line:
+# from unsplash_search import UnsplashSearch
 
+# With this function:
+def search_unsplash(query, api_key, per_page=1):
+    """Search Unsplash directly using their API"""
+    try:
+        url = f"https://api.unsplash.com/search/photos?query={query}&per_page={per_page}"
+        headers = {"Authorization": f"Client-ID {api_key}"}
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Unsplash API error: {str(e)}")
+        return None
 # Set page config
 st.set_page_config(
     page_title="Smart Text-to-Video Generator",

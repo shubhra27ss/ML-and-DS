@@ -91,17 +91,21 @@ def create_audio(text, output_file):
     st.audio(output_file)
 
 st.title("Text to Video/Audio Generator with Background Images")
-text_input = st.text_area("Enter text manually or upload a file")
+text_input = st.text_area("Enter text manually or upload a file and press Enter")
 text_file = st.file_uploader("Or upload a text file", type=["txt"])
 background_images = st.file_uploader("Upload background images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 option = st.radio("Select output type", ("Video", "Audio"))
 
-if st.button("Generate Output"):
+def process_text_input():
     text_content = ""
     if text_file:
         text_content = text_file.read().decode("utf-8")
     elif text_input:
         text_content = text_input
+    return text_content
+
+if st.button("Generate Output") or text_input:
+    text_content = process_text_input()
     
     if text_content:
         if option == "Video":
